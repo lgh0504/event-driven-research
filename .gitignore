@@ -1,0 +1,7 @@
+/venv/*
+/.idea/*
+*.json
+*.pyc
+*.DS_Store
+/resources/*
+!/resources/NASDQ100.txt
