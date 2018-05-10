@@ -8,3 +8,5 @@ from twitter_methods import TwitterStreaming
 from stock_methods import stock_batch_read
 from stock_methods import StockDatabase
 
+# embedding methods
+from embedding_methods import TextEmbedding

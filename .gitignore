@@ -4,4 +4,4 @@
 *.pyc
 *.DS_Store
 /resources/*
-!/resources/NASDQ100.txt
+!/resources/TRACK_WORDS.txt
