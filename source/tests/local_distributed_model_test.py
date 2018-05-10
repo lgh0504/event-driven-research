@@ -9,7 +9,7 @@ import json
 current_path = path.dirname(path.abspath(__file__))
 parent_path = path.dirname(current_path)
 sys.path.append(parent_path)
-from models.model_fn import lstm_fn
+from models import lstm_fn
 
 num_epochs = 10
 truncated_backprop_length = 15

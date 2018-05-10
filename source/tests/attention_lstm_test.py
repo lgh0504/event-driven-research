@@ -1,6 +1,5 @@
 from os import path
 import sys
-import numpy as np
 import tensorflow as tf
 current_path = path.dirname(path.abspath(__file__))
 parent_path = path.dirname(current_path)

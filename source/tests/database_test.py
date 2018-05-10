@@ -3,8 +3,7 @@ from os import path
 current_path = path.dirname(path.abspath(__file__))
 parent_path = path.dirname(current_path)
 
-from data_methods.twitter_data_methods import TwitterDatabase
-from data_methods.stock_data_methods import *
+from data_methods import *
 
 
 # db_path = path.join(parent_path, 'resources/twitter_database.db')

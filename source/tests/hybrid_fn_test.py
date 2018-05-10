@@ -7,7 +7,7 @@ from os import path
 current_path = path.dirname(path.abspath(__file__))
 parent_path = path.dirname(current_path)
 sys.path.append(parent_path)
-from models.model_fn import hybrid_fn
+from models import hybrid_fn
 
 keep_rate = 0.9
 max_time = 15
