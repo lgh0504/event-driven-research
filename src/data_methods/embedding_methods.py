@@ -10,9 +10,6 @@ from nltk.tokenize import sent_tokenize
 from nltk.tokenize import word_tokenize
 from sklearn.decomposition import PCA
 
-print("Google word2vec model loading, please wait ...")
-print("Load finished")
-
 
 class TextEmbedding:
     """

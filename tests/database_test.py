@@ -12,7 +12,7 @@ from data_methods import *
 #                 AND DATETIME(Date) >= '2018-04-23 09:00:00' AND DATETIME(Date) <= '2018-04-27 16:00:00'"))
 
 db_path = path.join(parent_path, 'resources/nasdaq100_database.db')
-stock_xls_path = path.join(parent_path, "resources/NASDAQ_data/*.xls")
+stock_xls_path = path.join(parent_path, "resources/nasdaq_data/*.xls")
 db = StockDatabase(db_path)
 stock_names = stock_names(stock_xls_path)
 for name in stock_names:

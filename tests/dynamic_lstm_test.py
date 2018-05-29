@@ -23,7 +23,7 @@ x = np.array(x.tolist(), dtype='f')
 x = x.reshape((batch_size, truncated_backprop_length, 1))
 
 # build network
-lstm = dynamic_lstm.dynamic_lstm(state_size, batch_size, 0.9)
+lstm = dynamic_lstm.DynamicLstm(state_size, batch_size, 0.9)
 hidden_states, last_state = lstm.run(x)
 hidden_states = tf.unstack(hidden_states, axis=1)
 attention_hidden_states = hidden_states[0:-1]

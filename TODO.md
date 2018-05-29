@@ -1,4 +1,6 @@
 ## TODO
-1. refactor the code aimed at multi-gpu learning
-2. dealing with stock data miss
-3. complete stock data pipeline
+1. env set up: stock crawler auto, cloud env
+2. tensorflow refactor
+3. data missing 
+4. parallel process
+5. other code refactor

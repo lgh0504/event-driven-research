@@ -7,7 +7,7 @@ from os import path
 current_path = path.dirname(path.abspath(__file__))
 parent_path = path.dirname(current_path)
 sys.path.append(parent_path)
-from models import hybrid_fn
+from models.model_fn import complex_model
 
 keep_rate = 0.9
 max_time = 15
@@ -72,7 +72,7 @@ def train_input_fn(features, labels, batch):
 
 
 classifier = tf.estimator.Estimator(
-    model_fn=hybrid_fn.complex_model,
+    model_fn=complex_model,
     params={
         'batch_size': batch_size,
         'state_size': state_size,
@@ -84,7 +84,7 @@ classifier = tf.estimator.Estimator(
     config=tf.estimator.RunConfig().replace(save_summary_steps=5))
 
 classifier.train(
-    input_fn=lambda: train_input_fn(x_train, y_train, batch_size), steps=100, )
+    input_fn=lambda: train_input_fn(x_train, y_train, batch_size), steps=100)
 
 eval_result = classifier.evaluate(
     input_fn=lambda: train_input_fn(x_test, y_test, batch_size))

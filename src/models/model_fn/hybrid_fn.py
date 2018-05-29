@@ -1,11 +1,5 @@
 import tensorflow as tf
 import numpy as np
-from os import path
-import sys
-
-current_path = path.dirname(path.abspath(__file__))
-parent_path = path.dirname(current_path)
-sys.path.append(parent_path)
 from models.building_blocks import dynamic_lstm
 from models.building_blocks import attention_based_lstm
 
@@ -30,9 +24,9 @@ def complex_model(features, labels, mode, params):
     keep_rate = params['keep_rate']
 
     # first lstm for attention of exogenous
-    with tf.variable_scope('first_lstm'):
-        lstm0 = dynamic_lstm.dynamic_lstm(state_size=state_size, batch_size=batch_size, keep_rate=keep_rate)
-        hidden_states, last_state = lstm0.run(X)
+    lstm0 = dynamic_lstm.DynamicLstm(state_size=state_size, batch_size=batch_size, keep_rate=keep_rate,
+                                     variable_scope="LSTM0")
+    hidden_states, last_state = lstm0.run(X)
     hidden_states = tf.unstack(hidden_states, axis=1)
     attention_hidden_states = hidden_states[0:-1]
 
@@ -75,9 +69,8 @@ def complex_model(features, labels, mode, params):
     exogenous_output = exogenous_hidden_states[-1]  # [batch_size, state_size]
 
     # generate event hidden_state
-    with tf.variable_scope('second_lstm'):
-        lstm2 = dynamic_lstm.dynamic_lstm(state_size, batch_size, keep_rate)
-        event_hidden_states, _ = lstm2.run(events)
+    lstm2 = dynamic_lstm.DynamicLstm(state_size, batch_size, keep_rate, variable_scope="LSTM1")
+    event_hidden_states, _ = lstm2.run(events)
 
     # combine event_hidden_state and exogenous_hidden_states
     event_hidden_states = tf.unstack(event_hidden_states, axis=1)
