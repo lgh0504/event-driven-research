@@ -10,3 +10,6 @@ from stock_methods import StockDatabase
 
 # embedding methods
 from embedding_methods import TextEmbedding
+
+# sample generator
+from sample_generator import SampleGenerator

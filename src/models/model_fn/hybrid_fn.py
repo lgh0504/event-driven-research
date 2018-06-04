@@ -9,6 +9,14 @@ from models.building_blocks import attention_based_lstm
 # shape of feature event: [batch_size, truncated_backprop_length, embedding_dimension]
 # shape of label : [batch_size, label_dimension]
 def complex_model(features, labels, mode, params):
+    """
+
+    :param features: a dict
+    :param labels:
+    :param mode:
+    :param params:
+    :return:
+    """
     # declare all training data_methods
     X = features['X']
     Y = features['Y']
@@ -26,9 +34,8 @@ def complex_model(features, labels, mode, params):
     # first lstm for attention of exogenous
     lstm0 = dynamic_lstm.DynamicLstm(state_size=state_size, batch_size=batch_size, keep_rate=keep_rate,
                                      variable_scope="LSTM0")
-    hidden_states, last_state = lstm0.run(X)
-    hidden_states = tf.unstack(hidden_states, axis=1)
-    attention_hidden_states = hidden_states[0:-1]
+    hidden_states = lstm0.run(X)
+    attention_hidden_states = tf.unstack(hidden_states, axis=1)
 
     # apply attention to exogenous
     W0 = tf.Variable(np.random.rand(state_size, truncated_backprop_length), dtype=tf.float32)

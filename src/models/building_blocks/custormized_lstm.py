@@ -2,9 +2,8 @@ import tensorflow as tf
 import numpy as np
 
 
-# a homemade lstm network
 class CustomizedLstm:
-
+    """ a homemade lstm network """
     # input data_methods has the shape of [batch_size, time_size, feature_size]
     def __init__(self, state_size, batch_size, time_size, feature_size):
         # set up parameters

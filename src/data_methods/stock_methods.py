@@ -3,6 +3,8 @@ import glob
 import re
 import time
 import sqlite3
+from datetime import datetime
+from datetime import timedelta
 import pandas as pd
 
 
@@ -26,18 +28,46 @@ def stock_batch_read(resource_path, start_time, end_time):
 
         # get rid of time outside boundary
         df = df[(df['Date'] >= start_time) & (df['Date'] <= end_time)]
+
         # convert data format
         df['Date'] = df['Date'].apply(lambda x: time.strftime('%Y-%m-%d %H:%M:00',
                                                               time.strptime(x, '%Y-%m-%d %H-%M')))
-        # TODO: check the missed data
+        # check the missed data
+        df = _check_missed_data(df)
+
+        # generate the stock : data frame dict
         stock_dict[stock_symbol] = df
+
+    # return the result
     return stock_dict
+
+
+def _check_missed_data(df):
+    for i in range(0, len(df)):
+        if i == 0:
+            pass
+        else:
+            pre_time = datetime.strptime(df.iloc[i - 1]["Date"], '%Y-%m-%d %H:%M:%S')
+            cur_time = datetime.strptime(df.iloc[i]["Date"], '%Y-%m-%d %H:%M:%S')
+            delta_time = cur_time - pre_time
+            if delta_time.seconds != 60 and pre_time.day == cur_time.day:
+                new_time = (pre_time + timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
+                new_open = df.iloc[i]["Open"]
+                new_high = df.iloc[i]["High"]
+                new_low = df.iloc[i]["Low"]
+                new_close = df.iloc[i]["Close"]
+                new_volume = df.iloc[i]["Volume"]
+                line = pd.DataFrame({"Date": new_time, "Open": new_open, "High": new_high,
+                                     "Low": new_low, "Close": new_close, "Volume": new_volume}, index=[i])
+                df = pd.concat([df.ix[:i - 1], line, df.ix[i:]]).reset_index(drop=True)
+    return df
 
 
 class StockDatabase:
     """
     Methods related to stock database
     """
+
     def __init__(self, db_path):
         """
         create the link to the database
@@ -52,7 +82,7 @@ class StockDatabase:
     def __del__(self):
         self.conn.commit()
         self.conn.close()
-        print ("Nasdaq Database closed")
+        print("Nasdaq Database closed")
 
     def create_table(self, table_name):
         """
@@ -82,7 +112,7 @@ class StockDatabase:
         if self.insert_count % 10000 == 0:
             self.conn.commit()
             self.insert_count = 0
-            print ("Commit 10000 inserts...")
+            print("Commit 10000 inserts...")
 
     def query(self, query):
         """
