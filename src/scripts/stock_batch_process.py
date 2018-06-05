@@ -6,7 +6,7 @@ from data_methods import StockDatabase
 if __name__ == '__main__':
 
     # set up path
-    root_path = os.environ['EVR_ROOT_PATH']
+    root_path = os.environ['EDR_ROOT_PATH']
     print(root_path)
 
     # read all from xls file
