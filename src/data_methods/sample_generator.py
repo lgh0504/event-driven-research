@@ -32,7 +32,7 @@ class SampleGenerator:
         return self._generate_text_bucket(start_time, end_time, query_result)
 
     def generate_stock_list(self, start_time, end_time):
-        # return list of list of number
+        # TODO: return list of list of number
         pass
 
     """ helper methods below """
