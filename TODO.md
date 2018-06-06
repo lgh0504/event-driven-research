@@ -1,3 +1,3 @@
 ## TODO
-1. generate training data
-2. build a baseline model
+1. generate selected training data
+2. build baseline training model

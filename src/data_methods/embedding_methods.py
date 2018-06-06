@@ -9,6 +9,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize
 from nltk.tokenize import word_tokenize
 from sklearn.decomposition import PCA
+import time
 
 
 class TextEmbedding:
@@ -25,6 +26,7 @@ class TextEmbedding:
         """
         print("Initializing, may take several minutes...")
         # check resources
+        start_time = time.time()
         try:
             nltk.data.find('tokenizers/punkt.zip')
         except LookupError:
@@ -37,10 +39,11 @@ class TextEmbedding:
         # load word2vec model
         self.model = KeyedVectors.load_word2vec_format(model_path, binary=True)
         self.english_stopwords = stopwords.words("english")
-        print("Initialization Done!")
+        end_time = time.time()
+        print("Initialization Done! Using %d seconds" % (end_time - start_time))
 
     @staticmethod
-    def _vectors_mean(word_vectors):
+    def vectors_mean(word_vectors):
         """
         get the mean of a bunch of vectors
         :param word_vectors: a bag / list of vectors
@@ -51,7 +54,7 @@ class TextEmbedding:
         return text_vector.tolist()
 
     @staticmethod
-    def _vectors_mix(text_vectors):
+    def vectors_mix(text_vectors):
         """
         a naive way to merge text vectors
         :param text_vectors: a bag of text vectors

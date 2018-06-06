@@ -3,6 +3,6 @@
 *.json
 *.pyc
 *.DS_Store
+!/resources/model_checkpoint/TRACK_WORDS.txt
 /resources/*
-!/resources/TRACK_WORDS.txt
 /docs/papers/*

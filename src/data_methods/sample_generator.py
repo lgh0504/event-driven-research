@@ -1,11 +1,12 @@
 from __future__ import print_function
 from datetime import datetime
 from twitter_methods import TwitterDatabase
+from stock_methods import StockDatabase
 
 
 class SampleGenerator:
 
-    def __init__(self, twitter_db_path):
+    def __init__(self, twitter_db_path, stock_db_path):
         self.date_index = 0
         self.text_index = 1
         self.seconds_in_minute = 60
@@ -13,6 +14,20 @@ class SampleGenerator:
         self.market_open_time = datetime.strptime('9:30AM', '%I:%M%p').time()
         self.market_close_time = datetime.strptime('4:00PM', '%I:%M%p').time()
         self.twitter_db = TwitterDatabase(twitter_db_path)
+        self.stock_db = StockDatabase(stock_db_path)
+        self.stock_table_names = ['aal', 'aapl', 'adbe', 'adi', 'adp', 'adsk', 'akam', 'algn',
+                                  'alxn', 'amat', 'amgn', 'amzn', 'atvi', 'avgo', 'bidu', 'biib',
+                                  'bkng', 'bmrn', 'ca', 'celg', 'cern', 'chkp', 'chtr', 'cmcsa',
+                                  'cost', 'csco', 'csx', 'ctas', 'ctrp', 'ctsh', 'ctxs', 'disca',
+                                  'disck', 'dish', 'dltr', 'ea', 'ebay', 'esrx', 'expe', 'fast',
+                                  'fb', 'fisv', 'fox', 'foxa', 'gild', 'goog', 'googl', 'has',
+                                  'holx', 'hsic', 'idxx', 'ilmn', 'incy', 'intc', 'intu', 'isrg',
+                                  'jbht', 'jd', 'khc', 'klac', 'lbtya', 'lbtyk', 'lila', 'lilak',
+                                  'lrcx', 'mar', 'mat', 'mchp', 'mdlz', 'meli', 'mnst', 'msft',
+                                  'mu', 'mxim', 'myl', 'nclh', 'nflx', 'ntes', 'nvda', 'orly',
+                                  'payx', 'pcar', 'pypl', 'qcom', 'qrtea', 'regn', 'rost', 'sbux',
+                                  'shpg', 'siri', 'stx', 'swks', 'symc', 'tmus', 'tsco', 'tsla', 'txn',
+                                  'ulta', 'viab', 'vod', 'vrsk', 'vrtx', 'wba', 'wdc', 'wynn', 'xlnx', 'xray']
 
     def generate_tweets_list(self, query):
 
@@ -31,9 +46,15 @@ class SampleGenerator:
         # return list of list of string
         return self._generate_text_bucket(start_time, end_time, query_result)
 
-    def generate_stock_list(self, start_time, end_time):
-        # TODO: return list of list of number
-        pass
+    def generate_stock_dict(self, start_time, end_time):
+        # TODO: fix time problem
+        stock_dict = {}
+        for name in self.stock_table_names:
+            query = "SELECT Open FROM " + name
+            query_result = self.stock_db.query(query)
+            query_result = map(lambda x: x[0], query_result)
+            stock_dict[name] = query_result
+        return stock_dict
 
     """ helper methods below """
 

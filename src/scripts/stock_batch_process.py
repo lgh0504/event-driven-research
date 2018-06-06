@@ -7,7 +7,6 @@ if __name__ == '__main__':
 
     # set up path
     root_path = os.environ['EDR_ROOT_PATH']
-    print(root_path)
 
     # read all from xls file
     stock_xls_path = path.join(root_path, "resources/nasdaq_data/*.xls")
