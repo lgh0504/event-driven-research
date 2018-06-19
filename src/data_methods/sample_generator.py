@@ -1,20 +1,30 @@
 from __future__ import print_function
 from datetime import datetime
+from datetime import timedelta
 from twitter_methods import TwitterDatabase
 from stock_methods import StockDatabase
 
 
 class SampleGenerator:
+    # TODO: make the class more robust
+    """
+    SampleGenerator mainly responsible for generating training samples from database
+    """
 
     def __init__(self, twitter_db_path, stock_db_path):
+        """
+        set up parameters and build connection to the database
+        :param twitter_db_path: is the path to twitter database
+        :param stock_db_path: is the path to stock database
+        """
+
+        # static parameters
         self.date_index = 0
         self.text_index = 1
         self.seconds_in_minute = 60
         self.minutes_in_day = 391
         self.market_open_time = datetime.strptime('9:30AM', '%I:%M%p').time()
         self.market_close_time = datetime.strptime('4:00PM', '%I:%M%p').time()
-        self.twitter_db = TwitterDatabase(twitter_db_path)
-        self.stock_db = StockDatabase(stock_db_path)
         self.stock_table_names = ['aal', 'aapl', 'adbe', 'adi', 'adp', 'adsk', 'akam', 'algn',
                                   'alxn', 'amat', 'amgn', 'amzn', 'atvi', 'avgo', 'bidu', 'biib',
                                   'bkng', 'bmrn', 'ca', 'celg', 'cern', 'chkp', 'chtr', 'cmcsa',
@@ -29,12 +39,22 @@ class SampleGenerator:
                                   'shpg', 'siri', 'stx', 'swks', 'symc', 'tmus', 'tsco', 'tsla', 'txn',
                                   'ulta', 'viab', 'vod', 'vrsk', 'vrtx', 'wba', 'wdc', 'wynn', 'xlnx', 'xray']
 
+        # database connection
+        self.twitter_db = TwitterDatabase(twitter_db_path)
+        self.stock_db = StockDatabase(stock_db_path)
+
     def generate_tweets_list(self, query):
+        # TODO: fix the weekend problem
+        """
+        generate a list of text buckets from database ( put the tweets to the corresponding buckets )
+        :param query: is the SQL query to get data
+        :return: a list of text buckets
+        """
 
         # get query result from database
         query_result = self.twitter_db.query(query)
 
-        # convert date of the result
+        # convert date, change the time outside of the trading time
         query_result = self._date_convert(query_result)
 
         # get start time and end time from all query result
@@ -60,7 +80,7 @@ class SampleGenerator:
 
     def _date_convert(self, query_result):
         """
-        convert raw record's date
+        convert raw record's date to trading time date
         :param query_result: a list of (date, text)
         :return: data item is converted
         """
@@ -76,9 +96,25 @@ class SampleGenerator:
             # get time of the record
             time = datetime.strptime(record[self.date_index], '%Y-%m-%d %H:%M:%S')
 
-            # convert time, deleting second
-            if time.time() < self.market_open_time:
-                time = time.replace(hour=open_hour, minute=open_min)
+            # declare some boolean flag
+            is_friday = time.weekday() == 5
+            is_saturday = time.weekday() == 6
+            is_sunday = time.weekday() == 7
+            is_weekend = is_saturday or is_sunday
+            too_early = self.market_open_time < time.time()
+            too_late = time.time() < self.market_close_time
+            not_trading_time = is_saturday or is_sunday or too_early or too_late
+
+            # the time convert logic
+            if not_trading_time:
+                if is_weekend:
+                    if is_saturday:
+                        pass
+                    if is_sunday:
+                        pass
+                if True:
+                    pass
+
             if time.time() > self.market_close_time:
                 time = time.replace(hour=close_hour, minute=close_min)
             time = time.replace(second=0)
@@ -104,6 +140,7 @@ class SampleGenerator:
         :param query_result: is the query result
         :return: a new converted query result
         """
+
         def _date_to_key(record):
             time = record[self.date_index]
             delta_date = time - start_time
@@ -135,7 +172,3 @@ class SampleGenerator:
             text_buckets[index].append(text)
 
         return text_buckets
-
-
-
-

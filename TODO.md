@@ -1,3 +1,3 @@
 ## TODO
-1. generate selected training data
-2. build baseline training model
+1. refactor data code to adapt multi week data
+3. accelerate data i/o speed

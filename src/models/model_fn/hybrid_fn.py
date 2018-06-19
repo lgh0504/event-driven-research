@@ -40,7 +40,7 @@ def complex_model(features, labels, mode, params):
     # apply attention to exogenous
     W0 = tf.Variable(np.random.rand(state_size, truncated_backprop_length), dtype=tf.float32)
     U0 = tf.Variable(np.random.rand(truncated_backprop_length, truncated_backprop_length), dtype=tf.float32)
-    V0 = tf.Variable(np.random.rand(truncated_backprop_length, 1), dtype=tf.float32)
+    V0 = tf.Variable(np.random.rartnd(truncated_backprop_length, 1), dtype=tf.float32)
 
     weights = []
     for h in attention_hidden_states:

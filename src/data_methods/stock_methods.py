@@ -1,65 +1,76 @@
 from __future__ import print_function
-import glob
-import re
-import time
+
 import sqlite3
-from datetime import datetime
+import time
 from datetime import timedelta
+
 import pandas as pd
-
-
-def stock_batch_read(resource_path, start_time, end_time):
-    """
-    read all xls file in the resource path
-    :param resource_path: path to the directory containing xls files
-    :param start_time: start time of stock price
-    :param end_time: end time of stock price
-    :return: a dictionary, key is stock name, value is the a data frame of the xls file
-    """
-    # read all xls files
-    stock_files = glob.glob(resource_path)
-    pattern = "_(\w{1,10})\.xls"
-
-    # collect the stock dictionary
-    stock_dict = {}
-    for filename in stock_files:
-        stock_symbol = re.search(pattern, filename).group(1)
-        df = pd.read_excel(filename)
-
-        # get rid of time outside boundary
-        df = df[(df['Date'] >= start_time) & (df['Date'] <= end_time)]
-
-        # convert data format
-        df['Date'] = df['Date'].apply(lambda x: time.strftime('%Y-%m-%d %H:%M:00',
-                                                              time.strptime(x, '%Y-%m-%d %H-%M')))
-        # check the missed data
-        df = _check_missed_data(df)
-
-        # generate the stock : data frame dict
-        stock_dict[stock_symbol] = df
-
-    # return the result
-    return stock_dict
+from googlefinance.client import get_price_data
 
 
 def _check_missed_data(df):
-    for i in range(0, len(df)):
-        if i == 0:
-            pass
-        else:
-            pre_time = datetime.strptime(df.iloc[i - 1]["Date"], '%Y-%m-%d %H:%M:%S')
-            cur_time = datetime.strptime(df.iloc[i]["Date"], '%Y-%m-%d %H:%M:%S')
-            delta_time = cur_time - pre_time
-            if delta_time.seconds != 60 and pre_time.day == cur_time.day:
-                new_time = (pre_time + timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
-                new_open = df.iloc[i]["Open"]
-                new_high = df.iloc[i]["High"]
-                new_low = df.iloc[i]["Low"]
-                new_close = df.iloc[i]["Close"]
-                new_volume = df.iloc[i]["Volume"]
-                line = pd.DataFrame({"Date": new_time, "Open": new_open, "High": new_high,
-                                     "Low": new_low, "Close": new_close, "Volume": new_volume}, index=[i])
-                df = pd.concat([df.ix[:i - 1], line, df.ix[i:]]).reset_index(drop=True)
+    """
+    data from google finance sometime is not complete, so check and modify it myself
+    :param df: the dataframe to be checked
+    :return: a checked dataframe
+    """
+    i = 0
+    while i < len(df) - 1:
+        i += 1
+        pre_time = df.iloc[i - 1]["Date"]
+        cur_time = df.iloc[i]["Date"]
+        delta_time = cur_time - pre_time
+
+        # if the interval is not one minute
+        if delta_time.seconds != 60 and pre_time.day == cur_time.day:
+            # create a new entry
+            new_time = pre_time + timedelta(minutes=1)
+            new_open = df.iloc[i]["Open"]
+            new_high = df.iloc[i]["High"]
+            new_low = df.iloc[i]["Low"]
+            new_close = df.iloc[i]["Close"]
+            new_volume = df.iloc[i]["Volume"]
+            line = pd.DataFrame({"Date": new_time, "Open": new_open, "High": new_high,
+                                 "Low": new_low, "Close": new_close, "Volume": new_volume}, index=[i])
+
+            # add the new entry to the dataframe
+            df = pd.concat([df.iloc[:i], line, df.iloc[i:]]).reset_index(drop=True)
+    return df
+
+
+def get_good_stock_data(symbol, period, interval=60):
+    """
+    get a checked stock price data
+    :param symbol: is the stock symbol like AAPL
+    :param period: the time period of data
+    :param interval: is the time interval
+    :return: a formatted data frame
+    """
+
+    # get data from server
+    param = {
+        'q': symbol,  # Stock symbol (ex: "AAPL")
+        'i': interval,  # Interval size in seconds ("86400" = 1 day intervals)
+        'p': period  # Period
+    }
+    df = get_price_data(param)
+
+    # reformat the index
+    df.reset_index(inplace=True)
+    df = df.rename(index=str, columns={"index": "Date"})
+
+    # reformat time, from Beijing to USA east
+    df['Date'] = df['Date'] + timedelta(hours=-12)
+
+    # check the missed data
+    df = _check_missed_data(df)
+
+    # reorder data frame
+    df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
+
+    # change Date to string
+    df['Date'] = df['Date'].apply(lambda x: time.strftime('%Y-%m-%d %H:%M:00'))
+
     return df
 
 

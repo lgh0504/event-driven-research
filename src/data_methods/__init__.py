@@ -5,7 +5,7 @@ from twitter_methods import TwitterDatabase
 from twitter_methods import TwitterStreaming
 
 # stock methods
-from stock_methods import stock_batch_read
+from stock_methods import get_good_stock_data
 from stock_methods import StockDatabase
 
 # embedding methods

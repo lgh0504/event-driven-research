@@ -1,2 +1,3 @@
 from hybrid_input_fn import train_input_fn
 from hybrid_input_fn import eval_input_fn
+from time_irrelevant_input_fn import time_irrelevant_train_fn
