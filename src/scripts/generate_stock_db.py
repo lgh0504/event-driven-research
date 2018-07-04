@@ -36,4 +36,4 @@ if __name__ == '__main__':
     # set up path
     root_path = "../.."
 
-    stock_data_pipeline(root_path, "60d")
+    stock_data_pipeline(root_path, "30d")

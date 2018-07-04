@@ -1,4 +1,5 @@
 from __future__ import print_function
+import numpy as np
 from datetime import datetime
 from datetime import timedelta
 from twitter_methods import TwitterDatabase
@@ -6,16 +7,21 @@ from stock_methods import StockDatabase
 
 
 class SampleGenerator:
-    # TODO: make the class more robust
-    """
-    SampleGenerator mainly responsible for generating training samples from database
-    """
+    """ SampleGenerator mainly responsible for generating training samples from database """
 
-    def __init__(self, twitter_db_path, stock_db_path):
+    # TODO: Add APIs for multi type training data
+
+    def __init__(self, twitter_db_path, stock_db_path,
+                 start_date, start_index, end_date, end_index):
         """
-        set up parameters and build connection to the database
+        1. set up parameters and build connection to the database
+        2. generate the key data structure
         :param twitter_db_path: is the path to twitter database
         :param stock_db_path: is the path to stock database
+        :param start_date: is 'yy-mm-dd'
+        :param start_index: is from 0 to 391
+        :param end_date: is 'yy-mm-dd'
+        :param end_index: is from 0 to 391
         """
 
         # static parameters
@@ -43,132 +49,212 @@ class SampleGenerator:
         self.twitter_db = TwitterDatabase(twitter_db_path)
         self.stock_db = StockDatabase(stock_db_path)
 
-    def generate_tweets_list(self, query):
-        # TODO: fix the weekend problem
-        """
-        generate a list of text buckets from database ( put the tweets to the corresponding buckets )
-        :param query: is the SQL query to get data
-        :return: a list of text buckets
-        """
+        # generate twitter list [(date, index, [text])]
+        # date is datetime, index is int, text is string
+        self.twitter_list = self._generate_tweets_list(self._generate_twitter_query(
+            start_date, start_index, end_date, end_index
+        ))
+
+        # generate stock dict {symbol: [(date, index, price)]}
+        # date is datetime, index is int, price is float
+        self.stock_dict = self._generate_stock_dict(self._generate_stock_query(
+            start_date, start_index, end_date, end_index
+        ))
+
+    """ APIs for generating training samples """
+
+    def some_api(self):
+        pass
+
+    def get_serial_text_sample(self, time_interval):
+        serial_text_list = []
+        for i in range(0, len(self.twitter_list) - time_interval + 1):
+            serial_text_list.append(map(lambda x: x[2], self.twitter_list[i:i + time_interval]))
+        return serial_text_list
+
+    def get_serial_stock_sample(self, symbol_list, time_interval):
+        stock_list = []
+        for symbol in symbol_list:
+            stock_list.append(map(lambda x: x[2], self.stock_dict[symbol]))
+        stock_list = np.matrix(stock_list).transpose().tolist()
+
+        serial_stock_list = []
+        for i in range(0, len(self.twitter_list) - time_interval + 1):
+            serial_stock_list.append(stock_list[i:i + time_interval])
+        return serial_stock_list
+
+    """ first stage helper methods """
+
+    def _generate_twitter_query(self, start_date, start_index, end_date, end_index):
+        # very complex logic to generate start time
+        if start_index != 0:
+            start_time = "\'" + start_date + " " + self._generate_time(start_index - 1) + "\'"
+        else:
+            # TODO: simple logic here now, maybe considering weekend
+            start_date = datetime.strptime(start_date, "%Y-%m-%d")
+            start_date += timedelta(days=-1)
+            start_date = start_date.strftime("%Y-%m-%d")
+            start_time = "\'" + start_date + " 16:00\'"
+
+        end_time = "\'" + end_date + " " + self._generate_time(end_index) + "\'"
+        query = " AND DATETIME(Date) >= " + start_time + " AND DATETIME(Date) < " + end_time  # >= and < is tricky
+        return query
+
+    def _generate_stock_query(self, start_date, start_index, end_date, end_index):
+
+        start_time = "\'" + start_date + " " + self._generate_time(start_index) + "\'"
+        end_time = "\'" + end_date + " " + self._generate_time(end_index) + "\'"
+        query = " WHERE DATETIME(Date) >= " + start_time + " AND DATETIME(Date) <= " + end_time  # >= and <= is tricky
+        return query
+
+    def _generate_tweets_list(self, partial_query):
 
         # get query result from database
+        query = "SELECT Date,text from Tweets WHERE followers_count > 10000" + partial_query
         query_result = self.twitter_db.query(query)
 
-        # convert date, change the time outside of the trading time
-        query_result = self._date_convert(query_result)
+        # convert date format to date + index, return [(date, index, text)]
+        # date is datetime, index is int, text is string
+        query_result = self._twitter_date_convert(query_result)
 
-        # get start time and end time from all query result
-        start_time, end_time = self._get_start_end_time(query_result)
+        # merge [(date, index, text)] to [(date, index, [text])]
+        query_result = self._merge_text(query_result)
 
-        # convert index of the result
-        query_result = self._index_convert(start_time, query_result)
+        # sort the data
+        zero = datetime.min.time()
+        query_result = sorted(query_result, key=lambda x: datetime.combine(x[0], zero) + timedelta(minutes=x[1]))
 
-        # return list of list of string
-        return self._generate_text_bucket(start_time, end_time, query_result)
+        return query_result
 
-    def generate_stock_dict(self, start_time, end_time):
-        # TODO: fix time problem
+    def _generate_stock_dict(self, partial_query):
+
+        # generate the stock dict
         stock_dict = {}
+
+        # loop over all stock symbol
         for name in self.stock_table_names:
-            query = "SELECT Open FROM " + name
+            # generate the query, get ((Date, Price)) set from database
+            query = "SELECT Date,Open FROM " + name + partial_query
             query_result = self.stock_db.query(query)
-            query_result = map(lambda x: x[0], query_result)
+
+            # convert data to [(Date, index, Price)], while the Date is datetime type
+            query_result = self._stock_date_convert(query_result)
+
+            # sort the data
+            zero = datetime.min.time()
+            query_result = sorted(query_result, key=lambda x: datetime.combine(x[0], zero) + timedelta(minutes=x[1]))
+
             stock_dict[name] = query_result
+
         return stock_dict
 
-    """ helper methods below """
+    """ second stage helper methods """
 
-    def _date_convert(self, query_result):
+    @staticmethod
+    def _generate_time(index):
+        open_time = datetime.strptime('9:30AM', '%I:%M%p')
+        time_generated = open_time + timedelta(minutes=index)
+        time_generated = time_generated.time()
+        return time_generated.strftime('%H:%M:%S')
+
+    @staticmethod
+    def _merge_text(query_result):
+
+        # make an empty dict for hashing
+        hash_dict = {}
+
+        # define a hash function
+        def _my_hash(date, index):
+            hash_key = date.strftime('%Y-%m-%d') + str(index)
+            return hash_key
+
+        # hashing
+        for record in query_result:
+            key = _my_hash(record[0], record[1])
+            if key not in hash_dict:
+                hash_dict[key] = [record]
+            else:
+                hash_dict[key].append(record)
+
+        # merge the dict
+        query_result = []
+        for record_list in hash_dict.values():
+            date = record_list[0][0]
+            index = record_list[0][1]
+            text_list = []
+            for record in record_list:
+                text_list.append(record[2])
+            key_tuple = (date, index, text_list)
+            query_result.append(key_tuple)
+        return query_result
+
+    def _twitter_date_convert(self, query_result):
         """
         convert raw record's date to trading time date
+        and make the indexing work easier
         :param query_result: a list of (date, text)
         :return: data item is converted
         """
-
-        # define some parameters
-        open_hour = self.market_open_time.hour
-        open_min = self.market_open_time.minute
-        close_hour = self.market_close_time.hour
-        close_min = self.market_close_time.minute
 
         # define a helper method
         def _time_convert(record):
             # get time of the record
             time = datetime.strptime(record[self.date_index], '%Y-%m-%d %H:%M:%S')
+            trading_date = time.date()
+            trading_time = time.time()
+            trading_index = 0
 
             # declare some boolean flag
             is_friday = time.weekday() == 5
             is_saturday = time.weekday() == 6
             is_sunday = time.weekday() == 7
-            is_weekend = is_saturday or is_sunday
-            too_early = self.market_open_time < time.time()
-            too_late = time.time() < self.market_close_time
-            not_trading_time = is_saturday or is_sunday or too_early or too_late
+            too_early = trading_time < self.market_open_time  # < and >= make it easier for logic below and it's right
+            too_late = trading_time >= self.market_close_time
 
             # the time convert logic
-            if not_trading_time:
-                if is_weekend:
-                    if is_saturday:
-                        pass
-                    if is_sunday:
-                        pass
-                if True:
-                    pass
-
-            if time.time() > self.market_close_time:
-                time = time.replace(hour=close_hour, minute=close_min)
-            time = time.replace(second=0)
+            # for time not in trading time, modify the trading date
+            # for time in trading time, modify the trading index
+            if is_saturday:
+                trading_date += timedelta(days=2)
+            elif is_sunday:
+                trading_date += timedelta(days=1)
+            elif is_friday and too_late:
+                trading_date += timedelta(days=3)
+            elif too_late:
+                trading_date += timedelta(days=1)
+            elif too_early:
+                pass
+            else:
+                open_time = self.market_open_time
+                index_time = time + timedelta(minutes=1)
+                index_time = index_time.time()
+                trading_index = (index_time.hour - open_time.hour) * 60 + (index_time.minute - open_time.minute)
 
             # generate new record
-            new_record = [time, record[self.text_index]]
+            new_record = (trading_date, trading_index, record[self.text_index])
 
             return new_record
 
         # using the helper method
-        return map(_time_convert, query_result)
+        query_result = map(_time_convert, query_result)
+        return query_result
 
-    def _get_start_end_time(self, query_result):
-        time_series = map(lambda record: record[self.date_index], query_result)
-        start_time = min(time_series)
-        end_time = max(time_series)
-        return start_time, end_time
+    def _stock_date_convert(self, query_result):
 
-    def _index_convert(self, start_time, query_result):
-        """
-        convert record's time to index
-        :param start_time: is the start time of all record
-        :param query_result: is the query result
-        :return: a new converted query result
-        """
+        open_time = self.market_open_time
 
-        def _date_to_key(record):
-            time = record[self.date_index]
-            delta_date = time - start_time
-            delta_day = delta_date.days
-            delta_min = delta_date.seconds / self.seconds_in_minute
-            time_index = delta_day * self.minutes_in_day + delta_min
-            new_record = [time_index, record[self.text_index]]
+        def _time_convert(record):
+            # get time of the record
+            time = datetime.strptime(record[self.date_index], '%Y-%m-%d %H:%M:%S')
+            trading_date = time.date()
+            trading_time = time.time()
+            trading_index = (trading_time.hour - open_time.hour) * 60 + (trading_time.minute - open_time.minute)
+
+            # generate new record
+            new_record = (trading_date, trading_index, record[self.text_index])
+
             return new_record
 
-        return map(_date_to_key, query_result)
-
-    def _generate_text_bucket(self, start_time, end_time, query_result):
-        """
-        generate text bucket at minute scale from query result
-        :param start_time: is start time of all records
-        :param end_time: is end time of all records
-        :param query_result: is the query result
-        :return: a list of list of text
-        """
-        time_duration = end_time - start_time
-        bucket_number = time_duration.days * self.minutes_in_day + time_duration.seconds / self.seconds_in_minute + 1
-        text_buckets = []
-        for i in range(0, bucket_number):
-            text_buckets.append([])
-
-        for record in query_result:
-            index = record[self.date_index]
-            text = record[self.text_index]
-            text_buckets[index].append(text)
-
-        return text_buckets
+        # using the helper method
+        query_result = map(_time_convert, query_result)
+        return query_result

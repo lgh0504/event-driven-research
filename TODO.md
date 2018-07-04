@@ -1,3 +1,3 @@
 ## TODO
-1. refactor data code to adapt multi week data
-3. accelerate data i/o speed
+1. insert data into stock database
+2. accelerate data i/o speed

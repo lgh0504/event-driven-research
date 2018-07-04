@@ -54,6 +54,7 @@ def get_good_stock_data(symbol, period, interval=60):
         'p': period  # Period
     }
     df = get_price_data(param)
+    time.sleep(1)  # sleep to prevent high frequency request
 
     # reformat the index
     df.reset_index(inplace=True)
@@ -69,7 +70,7 @@ def get_good_stock_data(symbol, period, interval=60):
     df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
 
     # change Date to string
-    df['Date'] = df['Date'].apply(lambda x: time.strftime('%Y-%m-%d %H:%M:00'))
+    df['Date'] = df['Date'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:00'))
 
     return df
 
