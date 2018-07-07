@@ -12,7 +12,10 @@ def run_basic_one(model_path, target_path, other_path, text_path):
     target_piece = pickle.load(open(target_path, "rb"))
     other_prices = pickle.load(open(other_path, "rb"))
     texts = pickle.load(open(text_path, "rb"))
-    labels = [1.] * 9746
+    labels = []
+    for i in range(0, len(target_piece)):
+        if i != 0:
+            labels.append(target_piece[i][0])
 
     # set up parameters
     params = {'length': 30,
