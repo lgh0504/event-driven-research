@@ -5,7 +5,7 @@ from models.model_fn import basic_predictor_fn
 from models.input_fn import time_irrelevant_train_fn
 
 if __name__ == "__main__":
-    root_path = os.environ['EDR_ROOT_PATH']
+    root_path = os.environ['PROJECT_ROOT_PATH']
 
     # set up path
     data_path = path.join(root_path, "resources/training_data/training_dict.pickle")

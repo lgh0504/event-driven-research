@@ -1,18 +1,15 @@
 import tensorflow as tf
-
-batch_size = 2
-state_size = 3
-
-
-init_cell_state = tf.constant(1, dtype=tf.float32, shape=[batch_size, state_size])
-init_hidden_state = tf.constant(1, dtype=tf.float32, shape=[batch_size, state_size])
-init_state = tf.nn.rnn_cell.LSTMStateTuple(init_cell_state, init_hidden_state)
-cell = tf.nn.rnn_cell.LSTMCell(state_size, state_is_tuple=True)
-
-# [batch_size, ?]
-x = tf.constant([[1.,2.,3.,4.], [5.,6.,7.,8.]])
-output, state = cell(x, init_state)
-
+from models.building_blocks import AttentionLayer
+v1 = [[[1., 1., 1.], [2., 2., 2.], [0., 0., 0.]],
+      [[3., 3., 3.], [4., 4., 4.], [0., 0., 0.]]]
+v2 = tf.slice(v1, [0, 1, 0], [2, 1, 3])
+v3 = tf.tile(v2, [1, 3, 1])
+v4 = tf.concat([v1, v3], axis=2)
+a = AttentionLayer(3, "aaa")
+v5 = a.run(v4)
+weight_dense = tf.layers.Dense(units=1, name="inner_weight_dense")
+v6 = weight_dense(v5)
+v7 = tf.reshape(v6, [2, 1, 1])
 with tf.Session() as sess:
     sess.run(tf.initialize_all_variables())
-    print(sess.run([output, state]))
+    print(sess.run([v7]))

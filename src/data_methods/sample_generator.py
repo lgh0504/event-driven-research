@@ -9,10 +9,9 @@ from stock_methods import StockDatabase
 class SampleGenerator:
     """ SampleGenerator mainly responsible for generating training samples from database """
 
-    # TODO: Add APIs for multi type training data
-
-    def __init__(self, twitter_db_path, stock_db_path,
-                 start_date, start_index, end_date, end_index):
+    def __init__(self, twitter_db_path, stock_db_path, lookup_table_path,
+                 start_date, start_index, end_date, end_index,
+                 stock_pool=('goog', 'msft', 'amzn', 'intc', 'aapl', 'nflx', 'ebay', 'fb')):
         """
         1. set up parameters and build connection to the database
         2. generate the key data structure
@@ -31,6 +30,7 @@ class SampleGenerator:
         self.minutes_in_day = 391
         self.market_open_time = datetime.strptime('9:30AM', '%I:%M%p').time()
         self.market_close_time = datetime.strptime('4:00PM', '%I:%M%p').time()
+        self.stock_pool = stock_pool
         self.stock_table_names = ['aal', 'aapl', 'adbe', 'adi', 'adp', 'adsk', 'akam', 'algn',
                                   'alxn', 'amat', 'amgn', 'amzn', 'atvi', 'avgo', 'bidu', 'biib',
                                   'bkng', 'bmrn', 'ca', 'celg', 'cern', 'chkp', 'chtr', 'cmcsa',
@@ -48,6 +48,7 @@ class SampleGenerator:
         # database connection
         self.twitter_db = TwitterDatabase(twitter_db_path)
         self.stock_db = StockDatabase(stock_db_path)
+        self.lookup_table = self.build_lookup_table(lookup_table_path)
 
         # generate twitter list [(date, index, [text])]
         # date is datetime, index is int, text is string
@@ -61,15 +62,23 @@ class SampleGenerator:
             start_date, start_index, end_date, end_index
         ))
 
+        # filter twitter_list by joining two data structure
+        self._join(self.twitter_list, self.stock_dict['aapl'])
+
     """ APIs for generating training samples """
 
-    def some_api(self):
-        pass
-
-    def get_serial_text_sample(self, time_interval):
+    # TODO: design more reasonable APIs
+    def get_serial_text_sample(self, stock_symbol, time_interval):
+        """
+        return well-formatted training data
+        :param stock_symbol: is the stock symbol data to get
+        :param time_interval: is the training time
+        :return:
+        """
         serial_text_list = []
+        filtered_twitter_list = self.filter_by_keywords(stock_symbol)
         for i in range(0, len(self.twitter_list) - time_interval + 1):
-            serial_text_list.append(map(lambda x: x[2], self.twitter_list[i:i + time_interval]))
+            serial_text_list.append(filtered_twitter_list[i:i + time_interval])
         return serial_text_list
 
     def get_serial_stock_sample(self, symbol_list, time_interval):
@@ -83,7 +92,35 @@ class SampleGenerator:
             serial_stock_list.append(stock_list[i:i + time_interval])
         return serial_stock_list
 
+    def get_stock_and_compliment(self, stock_symbol, time_interval):
+        compliment_list = [e for e in self.stock_pool if e != stock_symbol]
+        return (self.get_serial_stock_sample(stock_symbol, time_interval),
+                self.get_serial_stock_sample(compliment_list, time_interval))
+
     """ first stage helper methods """
+
+    @staticmethod
+    def build_lookup_table(table_path):
+        lookup_table = {}
+        with open(table_path, "rb") as f:
+            for line in f:
+                line = line[0:-1]
+                key = line.split(":")[0]
+                values = line.split(":")[1]
+                values = values.split(",")
+                lookup_table[key] = values
+        return lookup_table
+
+    def filter_by_keywords(self, stock_symbol):
+        def _filter(tweets):
+            filtered_tweets = []
+            for tweet in tweets:
+                for value in self.lookup_table[stock_symbol]:
+                    if value.lower() in tweet.lower():
+                        filtered_tweets.append(tweet)
+            return filtered_tweets
+
+        return map(_filter, map(lambda x: x[2], self.twitter_list))
 
     def _generate_twitter_query(self, start_date, start_index, end_date, end_index):
         # very complex logic to generate start time
@@ -134,7 +171,7 @@ class SampleGenerator:
         # loop over all stock symbol
         for name in self.stock_table_names:
             # generate the query, get ((Date, Price)) set from database
-            query = "SELECT Date,Open FROM " + name + partial_query
+            query = "SELECT DISTINCT Date,Open FROM " + name + partial_query
             query_result = self.stock_db.query(query)
 
             # convert data to [(Date, index, Price)], while the Date is datetime type
@@ -147,6 +184,27 @@ class SampleGenerator:
             stock_dict[name] = query_result
 
         return stock_dict
+
+    def _join(self, twitter_list, stock_list):
+
+        joined_twitter_list = []
+
+        # define a hash function
+        def _my_hash(date, index):
+            hash_key = date.strftime('%Y-%m-%d') + str(index)
+            return hash_key
+
+        # build hash table
+        hash_dict = {}
+        for record in stock_list:
+            hash_dict[_my_hash(record[0], record[1])] = 0
+
+        # join by nested hashing
+        for record in twitter_list:
+            if _my_hash(record[0], record[1]) in hash_dict:
+                joined_twitter_list.append(record)
+
+        self.twitter_list = joined_twitter_list
 
     """ second stage helper methods """
 

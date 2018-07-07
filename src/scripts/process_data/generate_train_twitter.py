@@ -5,22 +5,6 @@ from os import path
 import time
 
 
-# all data together in the bucket
-def generate_text_buckets():
-    from data_methods import SampleGenerator
-
-    # set up parameters
-    twitter_db_path = path.join(root_path, "resources/twitter_database.db")
-    stock_db_path = path.join(root_path, "resources/nasdaq100_database.db")
-    query = "SELECT Date,text from Tweets WHERE followers_count > 10000 " \
-            "AND DATETIME(Date) >= '2018-04-23 09:00:00' AND DATETIME(Date) <= '2018-04-27 16:00:01'"
-
-    # generate text buckets and dump the result
-    sample_generator = SampleGenerator(twitter_db_path, stock_db_path)
-    text_buckets = sample_generator.generate_tweets_list(query)
-    pickle.dump(text_buckets, open(path.join(root_path, "resources/training_data/text_buckets.pickle"), "wb"))
-
-
 # rule based filter, generate 107 buckets based on text buckets
 def generate_stock_tweet_dict():
     # build look up table
@@ -246,7 +230,7 @@ def generate_time_irrelevant_sample(time_interval):
             # generate text bucket in this time interval
             text_bucket = []
             for j in range(0, time_interval):
-                text_bucket += stock_vector_dict[key][i+j]
+                text_bucket += stock_vector_dict[key][i + j]
             # decide whether include it
             if len(text_bucket) > 0:
                 count += 1

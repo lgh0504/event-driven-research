@@ -1,1 +1,2 @@
-from attention_layer import attention_layer
+from attention_layer import AttentionLayer
+from dynamic_lstm import DynamicLstm

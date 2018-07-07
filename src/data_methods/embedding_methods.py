@@ -18,6 +18,7 @@ class TextEmbedding:
     """
     DIMENSION = 300
     zero_vector = [0] * DIMENSION
+    one_vector = [1.0] * 3 * DIMENSION
 
     def __init__(self, model_path):
         """
@@ -43,7 +44,7 @@ class TextEmbedding:
         print("Initialization Done! Using %d seconds" % (end_time - start_time))
 
     @staticmethod
-    def vectors_mean(word_vectors):
+    def _vectors_mean(word_vectors):
         """
         get the mean of a bunch of vectors
         :param word_vectors: a bag / list of vectors
@@ -54,7 +55,7 @@ class TextEmbedding:
         return text_vector.tolist()
 
     @staticmethod
-    def vectors_mix(text_vectors):
+    def _vectors_mix(text_vectors):
         """
         a naive way to merge text vectors
         :param text_vectors: a bag of text vectors
@@ -67,6 +68,7 @@ class TextEmbedding:
         event_vector += np.mean(temp_array, axis=0).tolist()
         return event_vector
 
+    # TODO: better remove urls
     def _text_tokenize(self, text):
         """
         tokenize and clean the text
@@ -107,6 +109,8 @@ class TextEmbedding:
         :param texts: a list of text(string)
         :return: a single event vector
         """
+        if len(texts) == 0:
+            return self.one_vector
         text_vectors = []
         for text in texts:
             text_vector = self._vectors_mean(self.text_embedding(text))

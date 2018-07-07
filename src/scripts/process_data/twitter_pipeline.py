@@ -3,7 +3,7 @@ import data_methods as dm
 
 if __name__ == '__main__':
     current_path = path.dirname(path.abspath(__file__))
-    root_path = path.dirname(current_path)
+    root_path = path.dirname(path.dirname(current_path))
 
     # streaming config
     tokens = {

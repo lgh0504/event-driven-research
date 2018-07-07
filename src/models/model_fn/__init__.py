@@ -1,2 +1,1 @@
-from hybrid_fn import complex_model
-from basic_predictor_fn import basic_predictor_fn
+from basic_model_one import basic_model_one
