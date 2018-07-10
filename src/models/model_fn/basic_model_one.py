@@ -6,11 +6,11 @@ from models.building_blocks import AttentionLayer
 def basic_model_one(features, labels, mode, params):
     """
     my basic hybrid model one with simple approach
-    :param features:
-    :param labels:
-    :param mode:
-    :param params:
-    :return:
+    :param features: having target_price, other_prices and texts information
+    :param labels: are the target price result
+    :param mode: is the running model
+    :param params: are model param settings
+    :return: saving model in the config path
     """
 
     ''' set up variables & parameters'''
@@ -101,6 +101,7 @@ def basic_model_one(features, labels, mode, params):
     # Compute evaluation metrics.
     mse = tf.metrics.mean_squared_error(labels=labels, predictions=values, name='MSE')
     metrics = {'MSE': mse}
+    tf.summary.scalar('mean_squared_error', mse)
 
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(

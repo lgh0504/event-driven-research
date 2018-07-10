@@ -67,7 +67,7 @@ class SampleGenerator:
 
     """ APIs for generating training samples """
 
-    # TODO: design more reasonable APIs
+    # TODO: design more reasonable APIs, now training sample generator has problem
     def get_serial_text_sample(self, stock_symbol, time_interval):
         """
         return well-formatted training data
@@ -93,8 +93,8 @@ class SampleGenerator:
         return serial_stock_list
 
     def get_stock_and_compliment(self, stock_symbol, time_interval):
-        compliment_list = [e for e in self.stock_pool if e != stock_symbol]
-        return (self.get_serial_stock_sample(stock_symbol, time_interval),
+        compliment_list = [e for e in self.stock_table_names if e != stock_symbol]
+        return (self.get_serial_stock_sample([stock_symbol], time_interval),
                 self.get_serial_stock_sample(compliment_list, time_interval))
 
     """ first stage helper methods """

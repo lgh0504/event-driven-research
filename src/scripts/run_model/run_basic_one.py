@@ -16,6 +16,9 @@ def run_basic_one(model_path, target_path, other_path, text_path):
     for i in range(0, len(target_piece)):
         if i != 0:
             labels.append(target_piece[i][0])
+    target_piece = target_piece[0:-1]
+    other_prices = other_prices[0:-1]
+    texts = texts[0:-1]
 
     # set up parameters
     params = {'length': 30,
