@@ -17,8 +17,6 @@ def run_basic_one(model_path, target_path, other_path, text_path):
     for i in range(0, len(target_piece)):
         if i != 0:
             labels.append(target_piece[i][0])
-            print(target_piece[i][0])
-            return
     target_piece = target_piece[0:-1]
     other_prices = other_prices[0:-1]
     texts = texts[0:-1]
@@ -47,7 +45,7 @@ def run_basic_one(model_path, target_path, other_path, text_path):
 
 
 if __name__ == "__main__":
-    root_path = "../.."
+    root_path = "../../.."
     #root_path = os.environ['PROJECT_ROOT_PATH']
     model_path = path.join(root_path, "resources/model_checkpoint/goog_basic_one/")
     target_path = path.join(root_path, "resources/training_data/goog.pl")

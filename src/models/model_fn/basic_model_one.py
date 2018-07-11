@@ -101,7 +101,7 @@ def basic_model_one(features, labels, mode, params):
     # Compute evaluation metrics.
     mse = tf.metrics.mean_squared_error(labels=labels, predictions=values, name='MSE')
     metrics = {'MSE': mse}
-    tf.summary.scalar('mean_squared_error', mse)
+    tf.summary.scalar('mean_squared_error', loss)
 
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(

@@ -1,5 +1,4 @@
-# files
-*.json
+# general file type
 *.pyc
 *.DS_Store
 *.ipynb
@@ -12,6 +11,5 @@
 /resources/*
 !/resources/info/
 /docs/papers/*
+/*.sh
 
-# specific file
-/sync.sh
