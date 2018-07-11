@@ -1,15 +1,16 @@
-
-/venv/*
-/.idea/*
-/.ipynb_checkpoints/*
-/resources/*
-/docs/papers/*
-
-
+# files
 *.json
 *.pyc
 *.DS_Store
 *.ipynb
 
 
-!/resources/info/*
+# folders
+/venv/*
+/.idea/*
+/.ipynb_checkpoints/*
+/resources/*
+!/resources/info/
+/docs/papers/*
+
+# specific file
