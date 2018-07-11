@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import pickle
 from os import path
@@ -16,6 +17,8 @@ def run_basic_one(model_path, target_path, other_path, text_path):
     for i in range(0, len(target_piece)):
         if i != 0:
             labels.append(target_piece[i][0])
+            print(target_piece[i][0])
+            return
     target_piece = target_piece[0:-1]
     other_prices = other_prices[0:-1]
     texts = texts[0:-1]
