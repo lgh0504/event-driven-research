@@ -4,12 +4,13 @@ from datetime import datetime
 from datetime import timedelta
 from twitter_methods import TwitterDatabase
 from stock_methods import StockDatabase
-from embedding_methods import 
+from embedding_methods import TextEmbedding
+
 
 class SampleGenerator:
     """ SampleGenerator mainly responsible for generating training samples from database """
 
-    def __init__(self, twitter_db_path, stock_db_path, lookup_table_path,
+    def __init__(self, twitter_db_path, stock_db_path, lookup_table_path, model_path,
                  start_date, start_index, end_date, end_index,
                  stock_pool=('goog', 'msft', 'amzn', 'intc', 'aapl', 'nflx', 'ebay', 'fb')):
         """
@@ -24,8 +25,6 @@ class SampleGenerator:
         """
 
         # static parameters
-        self.date_index = 0
-        self.text_index = 1
         self.seconds_in_minute = 60
         self.minutes_in_day = 391
         self.market_open_time = datetime.strptime('9:30AM', '%I:%M%p').time()
@@ -45,13 +44,14 @@ class SampleGenerator:
                                   'shpg', 'siri', 'stx', 'swks', 'symc', 'tmus', 'tsco', 'tsla', 'txn',
                                   'ulta', 'viab', 'vod', 'vrsk', 'vrtx', 'wba', 'wdc', 'wynn', 'xlnx', 'xray']
 
-        # database connection
+        # database connection, lookup table building, word2vev model loading
         self.twitter_db = TwitterDatabase(twitter_db_path)
         self.stock_db = StockDatabase(stock_db_path)
-        self.lookup_table = self.build_lookup_table(lookup_table_path)
+        self.lookup_table = self._build_lookup_table(lookup_table_path)
+        self.model = TextEmbedding(model_path)
 
-        # generate twitter list [(date, index, [text])]
-        # date is datetime, index is int, text is string
+        # generate twitter list [(date, index, [(text, count)])]
+        # date is datetime, index is int, text is string, count is int
         self.twitter_list = self._generate_tweets_list(self._generate_twitter_query(
             start_date, start_index, end_date, end_index
         ))
@@ -67,44 +67,26 @@ class SampleGenerator:
 
     """ APIs for generating training samples """
 
-    # TODO: design more reasonable APIs, now training sample generator has problem
     def get_serial_text_sample(self, stock_symbol, time_interval):
+        # TODO: design more reasonable APIs, now training sample generator has problem
         """
-        return well-formatted training data
-        :param stock_symbol: is the stock symbol data to get
-        :param time_interval: is the training time
+
+        :param stock_symbol:
+        :param time_interval:
         :return:
         """
-        serial_text_list = []
-        filtered_twitter_list = self.filter_by_keywords(stock_symbol)
-        for i in range(0, len(self.twitter_list) - time_interval + 1):
-            serial_text_list.append(filtered_twitter_list[i:i + time_interval])
-        return serial_text_list
-
-    def get_serial_stock_sample(self, symbol_list, time_interval):
-        stock_list = []
-        for symbol in symbol_list:
-            stock_list.append(map(lambda x: x[2], self.stock_dict[symbol]))
-        stock_list = np.matrix(stock_list).transpose().tolist()
-
-        serial_stock_list = []
-        for i in range(0, len(self.twitter_list) - time_interval + 1):
-            serial_stock_list.append(stock_list[i:i + time_interval])
-        return serial_stock_list
+        list = self._embedding(self._get_stock_tweets(stock_symbol)) #[(date, index, vector)]
+        pass
 
     def get_stock_and_compliment(self, stock_symbol, time_interval):
         compliment_list = [e for e in self.stock_table_names if e != stock_symbol]
         return (self.get_serial_stock_sample([stock_symbol], time_interval),
                 self.get_serial_stock_sample(compliment_list, time_interval))
 
-    def new_get_serial_text_sample(){
-
-    }
-
     """ first stage helper methods """
 
     @staticmethod
-    def build_lookup_table(table_path):
+    def _build_lookup_table(table_path):
         lookup_table = {}
         with open(table_path, "rb") as f:
             for line in f:
@@ -115,7 +97,13 @@ class SampleGenerator:
                 lookup_table[key] = values
         return lookup_table
 
-    def filter_by_keywords(self, stock_symbol):
+    def _get_stock_tweets(self, stock_symbol):
+        """
+        get all tweets relevant to the the given stock and generate weights of them
+        :param stock_symbol: is the stock symbol
+        :return: [(date, index, [(text, weight)]]
+        """
+        # TODO: implement a clever method to get more data and compute tweets' scores
         def _filter(tweets):
             filtered_tweets = []
             for tweet in tweets:
@@ -124,7 +112,15 @@ class SampleGenerator:
                         filtered_tweets.append(tweet)
             return filtered_tweets
 
-        return map(_filter, map(lambda x: x[2], self.twitter_list))
+        pass
+
+    def _embedding(self, tweets_list):
+        """
+        turn [(date, index, [(text, weight)]] to [(date, index, vector)]
+        :param tweets_list: [(date, index, [(text, weight)]]
+        :return: [(date, index, vector)]
+        """
+        return map(lambda x: (x[0], x[1], self.model.event_embedding(x[2])), tweets_list)
 
     def _generate_twitter_query(self, start_date, start_index, end_date, end_index):
         # very complex logic to generate start time
@@ -151,14 +147,14 @@ class SampleGenerator:
     def _generate_tweets_list(self, partial_query):
 
         # get query result from database
-        query = "SELECT Date,text from Tweets WHERE followers_count > 10000" + partial_query
+        query = "SELECT Date,text,followers_count from Tweets WHERE followers_count > 10000" + partial_query
         query_result = self.twitter_db.query(query)
 
-        # convert date format to date + index, return [(date, index, text)]
-        # date is datetime, index is int, text is string
+        # convert date format to (date, index), return [(date, index, text, count)]
+        # date is datetime, index is int, text is string, count is int
         query_result = self._twitter_date_convert(query_result)
 
-        # merge [(date, index, text)] to [(date, index, [text])]
+        # merge [(date, index, text, count)] to [(date, index, [(text, count)])]
         query_result = self._merge_text(query_result)
 
         # sort the data
@@ -245,7 +241,7 @@ class SampleGenerator:
             index = record_list[0][1]
             text_list = []
             for record in record_list:
-                text_list.append(record[2])
+                text_list.append((record[2], record[3]))
             key_tuple = (date, index, text_list)
             query_result.append(key_tuple)
         return query_result
@@ -254,14 +250,14 @@ class SampleGenerator:
         """
         convert raw record's date to trading time date
         and make the indexing work easier
-        :param query_result: a list of (date, text)
+        :param query_result: [(date, text, count)]
         :return: data item is converted
         """
 
         # define a helper method
         def _time_convert(record):
             # get time of the record
-            time = datetime.strptime(record[self.date_index], '%Y-%m-%d %H:%M:%S')
+            time = datetime.strptime(record[0], '%Y-%m-%d %H:%M:%S')
             trading_date = time.date()
             trading_time = time.time()
             trading_index = 0
@@ -293,7 +289,7 @@ class SampleGenerator:
                 trading_index = (index_time.hour - open_time.hour) * 60 + (index_time.minute - open_time.minute)
 
             # generate new record
-            new_record = (trading_date, trading_index, record[self.text_index])
+            new_record = (trading_date, trading_index, record[1], record[2])
 
             return new_record
 
@@ -321,6 +317,7 @@ class SampleGenerator:
         query_result = map(_time_convert, query_result)
         return query_result
 
+
 if __name__ == "__main__":
     sample = SampleGenerator(
         '../../resources/twitter_database.db',
@@ -331,4 +328,3 @@ if __name__ == "__main__":
         '2018-04-30',
         391,
     )
-

@@ -112,17 +112,16 @@ class TextEmbedding:
             word_vector_bag.append(vector)
         return self._vectors_mean(word_vector_bag)
 
-    def event_embedding(self, texts, weights):
+    def event_embedding(self, texts_weights_list):
         """
-        turn [string] to a vector
-        :param texts: [string]
-        :parm weights: [weight]
+        turn [(string, float)] to a vector
+        :param texts_weights_list: [(string, float)]
         :return: a single event vector
         """
-        if len(texts) == 0:
+        if len(texts_weights_list) == 0:
             return self.one_vector
         text_vectors = []
-        for (text, weight) in zip(texts, weights):
+        for (text, weight) in texts_weights_list:
             weighted_text_vector = [ weight * x for x in self.text_embedding(text)]
             text_vectors.append(weighted_text_vector)
         event_vector = self._vectors_mix(text_vectors)

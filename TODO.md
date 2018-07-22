@@ -6,8 +6,9 @@
 
 ### better data source
 1. better filter, get more data
-2. add weights when turn document vectors to event vectors
-3. generate more reasonable training samples
+2. add weights to words
+3. add weights to documents
+4. generate more reasonable training samples
 
 ### faster model iterating
 1. make the model code more flexible for easy modification
