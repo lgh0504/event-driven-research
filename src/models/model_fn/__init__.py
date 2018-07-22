@@ -1,1 +1,3 @@
-from basic_model_one import basic_model_one
+from hybrid_trend_rnn import hybrid_trend_rnn
+from local_trend_rnn import local_trend_rnn
+from price_trend_rnn import price_trend_rnn

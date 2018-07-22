@@ -7,8 +7,9 @@ def twitter_database_test(db_path):
     db = TwitterDatabase(db_path)
     query0 = "SELECT Date,text from Tweets WHERE followers_count > 10000 " \
              "AND DATETIME(Date) >= '2018-04-23 09:00:00' AND DATETIME(Date) <= '2018-04-27 16:00:01'"
-    query1 = "SELECT MIN(Date), MAX(Date) FROM Tweets"
-    print(db.query(query1))
+    query1 = "SELECT text FROM Tweets limit 5 offset 1"
+    for record in db.query(query1):
+        print(record)
 
 
 def stock_database_test(db_path):
@@ -24,9 +25,9 @@ if __name__ == "__main__":
     # set up path
     current_path = path.dirname(path.abspath(__file__))
     parent_path = path.dirname(path.dirname(current_path))
-    twitter_db_path = path.join(parent_path, 'resources/big_twitter_database.db')
+    twitter_db_path = path.join(parent_path, 'resources/database/big_twitter_database.db')
     stock_db_path = path.join(parent_path, 'resources/new_nasdaq100_database.db')
 
     # test
     twitter_database_test(twitter_db_path)
-    stock_database_test(stock_db_path)
+    #stock_database_test(stock_db_path)

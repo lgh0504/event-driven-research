@@ -5,9 +5,9 @@
 3. make the code more environment irrelevant (like path)
 
 ### better data source
-1. making the training sample more reasonable
-2. better filtering rules
-3. better tokenizing(remove urls)
+1. better filter, get more data
+2. add weights when turn document vectors to event vectors
+3. generate more reasonable training samples
 
 ### faster model iterating
 1. make the model code more flexible for easy modification

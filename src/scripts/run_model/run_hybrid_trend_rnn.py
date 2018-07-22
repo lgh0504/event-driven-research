@@ -4,15 +4,15 @@ import pickle
 from os import path
 import tensorflow as tf
 from models.input_fn import basic_input_fn
-from models.model_fn import basic_model_one
+from models.model_fn import hybrid_trend_rnn
 
 
-def run_basic_one(model_path, target_path, other_path, text_path):
+def run_model(model_path, local_prices, global_prices, local_events):
 
     # prepare data
-    target_piece = pickle.load(open(target_path, "rb"))
-    other_prices = pickle.load(open(other_path, "rb"))
-    texts = pickle.load(open(text_path, "rb"))
+    target_piece = pickle.load(open(local_prices, "rb"))
+    other_prices = pickle.load(open(global_prices, "rb"))
+    texts = pickle.load(open(local_events, "rb"))
     labels = []
     for i in range(0, len(target_piece)):
         if i != 0:
@@ -34,7 +34,7 @@ def run_basic_one(model_path, target_path, other_path, text_path):
 
     # set the model
     classifier = tf.estimator.Estimator(
-        model_fn=basic_model_one,
+        model_fn=hybrid_trend_rnn,
         params=params,
         model_dir=model_path,
         config=run_config)
@@ -54,9 +54,9 @@ if __name__ == "__main__":
     model_path = path.join(model_root, "goog_basic_one/")
 
     # set data path
-    target_path = path.join(training_data_root, "resources/training_data/goog.pl")
+    local_prices = path.join(training_data_root, "resources/training_data/goog.pl")
     other_path = path.join(training_data_root, "resources/training_data/other.pl")
     text_path = path.join(training_data_root, "resources/training_data/goog_text_vec.pl")
 
     # run the model
-    run_basic_one(model_path, target_path, other_path, text_path)
+    run_model(model_path, local_prices, other_path, text_path)

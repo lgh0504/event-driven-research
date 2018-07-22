@@ -3,12 +3,12 @@ from models.building_blocks import DynamicLstm
 from models.building_blocks import AttentionLayer
 
 
-def basic_model_one(features, labels, mode, params):
+def hybrid_trend_rnn(features, labels, mode, params):
     """
-    my basic hybrid model one with simple approach
-    :param features: having target_price, other_prices and texts information
-    :param labels: are the target price result
-    :param mode: is the running model
+    basic hybrid model capturing local (price & event) information and  global trend
+    :param features: having [local_prices], [global_prices] and [local_events] information
+    :param labels: are the local price result
+    :param mode: is the running mode
     :param params: are model param settings
     :return: saving model in the config path
     """
@@ -23,43 +23,43 @@ def basic_model_one(features, labels, mode, params):
     learning_rate = params['learning_rate']
 
     # get training features and label
-    target_price = features['target_price']  # [b, n, 1]
-    outer_prices = features['other_prices']  # [b, n, m]
-    event_texts = features['event_texts']    # [b, n, d]
+    local_prices = features['local_prices']  # [b, n, 1]
+    global_prices = features['global_prices']  # [b, n, m]
+    local_events = features['local_events']    # [b, n, d]
 
     ''' building basic model structure'''
-    # inner trend capture
-    inner_trend_capture = DynamicLstm(batch_size=batch_size, state_size=state_size,
-                                      keep_rate=1 - drop_rate, variable_scope="inner_price_capture")
-    inner_trend_h_vec = inner_trend_capture.run(target_price)  # [b, n, h]
+    # price trend capture
+    price_trend_capture = DynamicLstm(batch_size=batch_size, state_size=state_size,
+                                      keep_rate=1 - drop_rate, variable_scope="price_trend_capture")
+    price_trend_h_vec = price_trend_capture.run(local_prices)  # [b, n, h]
 
     # event trend capture
     event_trend_capture = DynamicLstm(batch_size=batch_size, state_size=state_size,
                                       keep_rate=1 - drop_rate, variable_scope="event_trend_capture")
-    event_trend_h_vec = event_trend_capture.run(event_texts)  # [b, n, h]
+    event_trend_h_vec = event_trend_capture.run(local_events)  # [b, n, h]
 
-    # outer trend capture
-    outer_trend_capture = DynamicLstm(batch_size=batch_size, state_size=state_size,
-                                      keep_rate=1 - drop_rate, variable_scope="outer_trend_capture")
-    outer_trend_h_vec = outer_trend_capture.run(outer_prices)  # [b, n, h]
+    # global trend capture
+    global_trend_capture = DynamicLstm(batch_size=batch_size, state_size=state_size,
+                                      keep_rate=1 - drop_rate, variable_scope="global_trend_capture")
+    global_trend_h_vec = global_trend_capture.run(global_prices)  # [b, n, h]
 
     ''' building cross trend attention '''
-    # building attention weights to inner trend
-    inner_weights = 0
-    attention_dense = tf.layers.Dense(units=1, name="inner_weight_dense")
-    inner_attention = AttentionLayer(attention_size=attention_size, name='inner_attention')
+    # building attention weights to price trend
+    price_weights = 0
+    attention_dense = tf.layers.Dense(units=1, name="price_weight_dense")
+    price_attention = AttentionLayer(attention_size=attention_size, name='price_attention')
     for i in range(0, length):
-        attention_h = tf.slice(inner_trend_h_vec, [0, i, 0], [batch_size, 1, state_size])  # [b, 1, h ]
+        attention_h = tf.slice(price_trend_h_vec, [0, i, 0], [batch_size, 1, state_size])  # [b, 1, h ]
         attention_h = tf.tile(attention_h, [1, length, 1])  # [b, n, h ]
-        attention_h = tf.concat([outer_trend_h_vec, attention_h], axis=2)  # [b, n, 2h]
-        attention_h = inner_attention.run(attention_h)  # [b, u]
+        attention_h = tf.concat([global_trend_h_vec, attention_h], axis=2)  # [b, n, 2h]
+        attention_h = price_attention.run(attention_h)  # [b, u]
         attention_h = attention_dense(attention_h)  # [b, 1]
         attention_h = tf.reshape(attention_h, [batch_size, 1, 1])  # [b, 1, 1]
         if i == 0:
-            inner_weights = attention_h
+            price_weights = attention_h
         else:
-            inner_weights = tf.concat([inner_weights, attention_h], axis=1)  # [b, n, 1]
-    inner_trend_h_vec = tf.multiply(inner_weights, inner_trend_h_vec)
+            price_weights = tf.concat([price_weights, attention_h], axis=1)  # [b, n, 1]
+    price_trend_h_vec = tf.multiply(price_weights, price_trend_h_vec)
 
     # building attention weights to event trend
     event_weights = 0
@@ -68,7 +68,7 @@ def basic_model_one(features, labels, mode, params):
     for i in range(0, length):
         attention_h = tf.slice(event_trend_h_vec, [0, i, 0], [batch_size, 1, state_size])  # [b, 1, h ]
         attention_h = tf.tile(attention_h, [1, length, 1])  # [b, n, h ]
-        attention_h = tf.concat([outer_trend_h_vec, attention_h], axis=2)  # [b, n, 2h]
+        attention_h = tf.concat([global_trend_h_vec, attention_h], axis=2)  # [b, n, 2h]
         attention_h = event_attention.run(attention_h)  # [b, u]
         attention_h = attention_dense(attention_h)  # [b, 1]
         attention_h = tf.reshape(attention_h, [batch_size, 1, 1])  # [b, 1, 1]
@@ -78,8 +78,8 @@ def basic_model_one(features, labels, mode, params):
             event_weights = tf.concat([event_weights, attention_h], axis=1)  # [b, n, 1]
     event_trend_h_vec = tf.multiply(event_weights, event_trend_h_vec)
 
-    ''' combine inner trend and event trend'''
-    hybrid_trend = tf.concat([inner_trend_h_vec, event_trend_h_vec], axis=2)  # [b, n, 2h]
+    ''' combine weighted_price trend and weighted_event trend'''
+    hybrid_trend = tf.concat([price_trend_h_vec, event_trend_h_vec], axis=2)  # [b, n, 2h]
     hybrid_trend_capture = DynamicLstm(batch_size=batch_size, state_size=state_size,
                                        keep_rate=1 - drop_rate, variable_scope="hybrid_trend_capture")
     hybrid_trend_h_vec = hybrid_trend_capture.run(hybrid_trend)  # [b, n, h]
