@@ -25,7 +25,7 @@ def basic_model_one(features, labels, mode, params):
     # get training features and label
     target_price = features['target_price']  # [b, n, 1]
     outer_prices = features['other_prices']  # [b, n, m]
-    event_texts = features['event_texts']  # [b, n, d]
+    event_texts = features['event_texts']    # [b, n, d]
 
     ''' building basic model structure'''
     # inner trend capture

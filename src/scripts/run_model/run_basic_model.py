@@ -45,10 +45,18 @@ def run_basic_one(model_path, target_path, other_path, text_path):
 
 
 if __name__ == "__main__":
-    root_path = "../../.."
-    #root_path = os.environ['PROJECT_ROOT_PATH']
-    model_path = path.join(root_path, "resources/model_checkpoint/goog_basic_one/")
-    target_path = path.join(root_path, "resources/training_data/goog.pl")
-    other_path = path.join(root_path, "resources/training_data/other.pl")
-    text_path = path.join(root_path, "resources/training_data/goog_text_vec.pl")
+
+    # set root path
+    training_data_root = os.environ['TRAINING_DATA_ROOT']
+    model_root = os.environ['MODEL_ROOT']
+
+    # set model path
+    model_path = path.join(model_root, "goog_basic_one/")
+
+    # set data path
+    target_path = path.join(training_data_root, "resources/training_data/goog.pl")
+    other_path = path.join(training_data_root, "resources/training_data/other.pl")
+    text_path = path.join(training_data_root, "resources/training_data/goog_text_vec.pl")
+
+    # run the model
     run_basic_one(model_path, target_path, other_path, text_path)

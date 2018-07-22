@@ -1,9 +1,14 @@
+import os
 from os import path
 import data_methods as dm
 
 if __name__ == '__main__':
-    current_path = path.dirname(path.abspath(__file__))
-    root_path = path.dirname(path.dirname(current_path))
+
+    # set path
+    lookup_root = os.environ['LOOKUP_ROOT']
+    database_root = os.environ['DATABASE_ROOT']
+    track_path = path.join(lookup_root, 'TRACK_WORDS.txt')
+    database_path = path.join(database_root, 'twitter_database.db')
 
     # streaming config
     tokens = {
@@ -12,7 +17,7 @@ if __name__ == '__main__':
         'consumer_key': "bz58HpjCEXS0kgn21Rj3qcvNo",
         'consumer_secret': "LjcezoypAs4Rjgmsd32bd8dB6tkGg7c6UvpIQ66hUi99EJYyPB"
     }
-    track_path = path.join(root_path, 'resources/TRACK_WORDS.txt')
+
     with open(track_path, 'r') as f:
         stock_symbol = f.read()
         track = stock_symbol.split(",")
@@ -24,9 +29,10 @@ if __name__ == '__main__':
     tweet_formator = dm.TwitterFormat()
 
     # database config
-    database_path = path.join(root_path, 'resources/twitter_database.db')
     tweet_database = dm.TwitterDatabase(database_path)
 
-    # start the pipeline
+    # pipeline config
     twitter_data_pipeline = dm.TwitterStreaming(tokens, track, tweet_filter, tweet_formator, tweet_database)
+
+    # run the pipeline
     twitter_data_pipeline.run()

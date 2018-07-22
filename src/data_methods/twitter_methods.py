@@ -1,3 +1,11 @@
+# This file contains all classes and methods for getting, filtering, cleaning data
+# from twitter official API and insert them to my database
+# the process includes following:
+# getting: TwitterStreaming
+# filtering: KeyWordFilter
+# formatting: TwitterFormat
+# persisting: TwitterDatabase
+
 from __future__ import print_function
 import sqlite3
 import time
@@ -8,50 +16,45 @@ import json
 
 
 class KeyWordFilter:
-    """
-    Filter tweets from twitter streaming API by keywords
-    """
+    """ filter tweets from twitter streaming API choosing by given keywords """
 
     def __init__(self, key_words):
         """
         create a filter
-        :param key_words: is the key words list used to filter the tweets
+        :param key_words: is a [key_words] list used to filter the tweets
         """
         self._key_words = [word.lower() for word in key_words]
 
     def filter(self, tweet):
         """
-        judge if a tweet should be filtered
-        :param tweet: a dictionary format of a tweet
+        judge whether a tweet should be filtered
+        :param tweet: a dictionary format of a tweet {key:value}
         :return: boolean true if tweet should be kept, else false
         """
         try:
             text = tweet['text']
         except KeyError:
             return False
-        text = text.lower()
+
         for word in self._key_words:
-            if word in text:
+            if word in text.lower():
                 return True
+
         return False
 
 
 class TwitterFormat:
-    """
-    Format the tweet, pick useful information
-    """
+    """ format the tweet, pick useful information """
 
     def __init__(self):
-        """
-        do nothing
-        """
+        """ do nothing """
         pass
 
     @staticmethod
     def format(twitter):
         """
-        format the tweet
-        :param twitter: a dictionary format of a tweet
+        format the tweet, choosing entries I care about
+        :param twitter: a dictionary format of a tweet {key:value}
         :return: a formatted dictionary
         """
         formatted_twitter = {}
@@ -72,9 +75,7 @@ class TwitterFormat:
 
 
 class TwitterDatabase:
-    """
-    Methods related to tweet database
-    """
+    """ Methods related to data persisting """
 
     def __init__(
             self,
@@ -90,7 +91,7 @@ class TwitterDatabase:
             )'''):
         """
         create the link to the database and create table if not exists
-        :param db_path: path to database
+        :param db_path: path to tweets database
         :param create_table_sql: SQL to create the default table
         """
         self.db_path = db_path
@@ -117,9 +118,9 @@ class TwitterDatabase:
     ):
         """
         insert a dictionary to the database
-        :param tweet: dictionary of a tweet
+        :param tweet: dictionary format of a tweet
         :param table_name: is the table name to insert
-        :param keys: are the keys of the dictionary
+        :param keys: are the keys of the dictionary and the table
         :param batch_mode: performance choice
         :return: nothing
         """
@@ -139,18 +140,16 @@ class TwitterDatabase:
 
     def query(self, query):
         """
-        execute a query
+        execute a query and return the result
         :param query: a SQL format string
-        :return: a list of query result, each result is a tuple
+        :return: [(result)]
         """
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
 
 class _MyStreamListener(StreamListener):
-    """
-    a listener dealing with streaming data
-    """
+    """ a listener dealing with streaming data """
 
     def __init__(self, tweet_filter, tweet_formator, tweet_db):
         super(_MyStreamListener, self).__init__()
@@ -167,8 +166,8 @@ class _MyStreamListener(StreamListener):
         try:
             data = json.loads(data)
             if self.tweet_filter.filter(data):
-                data = self.tweet_formator.format(data)
-                self.tweet_db.insert_dict(data)
+                formatted_data = self.tweet_formator.format(data)
+                self.tweet_db.insert_dict(formatted_data)
             return True
         except BaseException as e:
             print("Error on_data: %s" % str(e))
@@ -187,14 +186,14 @@ class _MyStreamListener(StreamListener):
 class TwitterStreaming:
     """
     Using this class to run the pipeline of twitter data processing
-    including data get, filter, format and insert into database
+    including data getting, filtering, formatting and persisting
     """
 
     def __init__(self, tokens, track, tweet_filter, tweet_formator, tweet_db):
         """
         set how to run the pipeline
-        :param tokens: dictionary of all tokens
-        :param track: keywords to track
+        :param tokens: dictionary of all tokens {key:value}
+        :param track: keywords to track : [key_words]
         :param tweet_filter: an instance of filter class
         :param tweet_formator: an instance of format class
         :param tweet_db: an instance of database class
@@ -211,7 +210,7 @@ class TwitterStreaming:
 
     def run(self):
         """
-        run the pipeline, this is unstopable
+        run the pipeline, this is unstoppable
         :return: nothing
         """
         while True:
