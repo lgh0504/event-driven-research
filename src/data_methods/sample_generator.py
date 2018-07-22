@@ -4,7 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 from twitter_methods import TwitterDatabase
 from stock_methods import StockDatabase
-
+from embedding_methods import 
 
 class SampleGenerator:
     """ SampleGenerator mainly responsible for generating training samples from database """
@@ -17,9 +17,9 @@ class SampleGenerator:
         2. generate the key data structure
         :param twitter_db_path: is the path to twitter database
         :param stock_db_path: is the path to stock database
-        :param start_date: is 'yy-mm-dd'
+        :param start_date: is 'yyyy-mm-dd'
         :param start_index: is from 0 to 391
-        :param end_date: is 'yy-mm-dd'
+        :param end_date: is 'yyyy-mm-dd'
         :param end_index: is from 0 to 391
         """
 
@@ -96,6 +96,10 @@ class SampleGenerator:
         compliment_list = [e for e in self.stock_table_names if e != stock_symbol]
         return (self.get_serial_stock_sample([stock_symbol], time_interval),
                 self.get_serial_stock_sample(compliment_list, time_interval))
+
+    def new_get_serial_text_sample(){
+
+    }
 
     """ first stage helper methods """
 
@@ -316,3 +320,15 @@ class SampleGenerator:
         # using the helper method
         query_result = map(_time_convert, query_result)
         return query_result
+
+if __name__ == "__main__":
+    sample = SampleGenerator(
+        '../../resources/twitter_database.db',
+        '../../resources/nasdaq100_database.db',
+        '../../resources/filter_table.txt',
+        '2018-04-23',
+        0,
+        '2018-04-30',
+        391,
+    )
+
