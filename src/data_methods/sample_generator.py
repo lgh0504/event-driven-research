@@ -5,19 +5,22 @@ from datetime import timedelta
 from twitter_methods import TwitterDatabase
 from stock_methods import StockDatabase
 from embedding_methods import TextEmbedding
-
+import math
 
 class SampleGenerator:
     """ SampleGenerator mainly responsible for generating training samples from database """
 
-    def __init__(self, twitter_db_path, stock_db_path, lookup_table_path, model_path,
-                 start_date, start_index, end_date, end_index,
+    def __init__(self, twitter_db_path, stock_db_path, lookup_table_path, general_words_path,
+                 model_path,start_date, start_index, end_date, end_index,
                  stock_pool=('goog', 'msft', 'amzn', 'intc', 'aapl', 'nflx', 'ebay', 'fb')):
         """
         1. set up parameters and build connection to the database
         2. generate the key data structure
         :param twitter_db_path: is the path to twitter database
         :param stock_db_path: is the path to stock database
+        :param lookup_table_path: lookup table specifies specific filters of one stock needs 
+        :param general_words_path: general filters of one stock
+        :param model_path: word embedding
         :param start_date: is 'yyyy-mm-dd'
         :param start_index: is from 0 to 391
         :param end_date: is 'yyyy-mm-dd'
@@ -48,7 +51,13 @@ class SampleGenerator:
         self.twitter_db = TwitterDatabase(twitter_db_path)
         self.stock_db = StockDatabase(stock_db_path)
         self.lookup_table = self._build_lookup_table(lookup_table_path)
+        self.general_words = self._read_general_words(general_words_path)
+        # DEBUG
         self.model = TextEmbedding(model_path)
+        # self.model = None
+        # self.date_index = 0
+        # self.text_index = 0
+        #DEBUG
 
         # generate twitter list [(date, index, [(text, count)])]
         # date is datetime, index is int, text is string, count is int
@@ -69,19 +78,44 @@ class SampleGenerator:
 
     def get_serial_text_sample(self, stock_symbol, time_interval):
         # TODO: design more reasonable APIs, now training sample generator has problem
+        # POLICY: ver1. if not full 391 entries for one single day, we drop the whole day
+        # POLICY: ver2. allow at most one point data loss 
         """
 
         :param stock_symbol:
         :param time_interval:
-        :return:
+        :return: [[[vector,...](one window),...](sliding window),...]
         """
+        training_samples = []
         list = self._embedding(self._get_stock_tweets(stock_symbol)) #[(date, index, vector)]
+        #[[li[0]]+li[i:i+4] for i in range(1,100-4)]
+        # analyze sample pools 
+        sample_bitmap = {}
+        for sample in list:
+            if sample[0] in sample_bitmap:
+                sample_bitmap[sample[0]].append(sample)
+            else:
+                sample_bitmap[sample[0]] = [sample[1]]
+        # POLICY ver1: generate training sequence if no loss of data for one day
+        for date in sorted(sample_bitmap.keys()):
+            if len(sample_bitmap[date]) >= 391:
+                vecs = [smpl[2] for smpl in sorted(sample_bitmap[date], key=lambda t:t[1])]
+                tr_vecs = [[vecs[0]] + vecs[i:i+time_interval-1] for i in range(1, 391-time_interval+2)]
+                training_samples.append(tr_vecs)
+
+
+        # POLICY ver2: generate training sequence if there are at least 390 samples in a day 
+        # for date in sorted(sample_bitmap.keys()):
+        #     if len(sample_bitmap[date]) >= 390:
+
+        return training_samples
+        
         pass
 
-    def get_stock_and_compliment(self, stock_symbol, time_interval):
-        compliment_list = [e for e in self.stock_table_names if e != stock_symbol]
-        return (self.get_serial_stock_sample([stock_symbol], time_interval),
-                self.get_serial_stock_sample(compliment_list, time_interval))
+    # def get_stock_and_compliment(self, stock_symbol, time_interval):
+    #     compliment_list = [e for e in self.stock_table_names if e != stock_symbol]
+    #     return (self.get_serial_stock_sample([stock_symbol], time_interval),
+    #             self.get_serial_stock_sample(compliment_list, time_interval))
 
     """ first stage helper methods """
 
@@ -96,23 +130,49 @@ class SampleGenerator:
                 values = values.split(",")
                 lookup_table[key] = values
         return lookup_table
+    
+    @staticmethod
+    def _read_general_words(general_words_path):
+        with open(general_words_path, 'r') as f:
+            return f.read().strip().split(',')
+    
+    @staticmethod
+    def _add_score (tweet_tups, key_words, score):
+        '''
+        add certain score to weight if some keywords are in the text
+        :param tweet_tups: [(text, count, weight),...]
+        '''
+
+        for tup in tweet_tups:
+            for key in key_words:
+                if key.lower() in tup[0].lower():
+                    tup[2] = tup[2] + score
+                    break
+        return tweet_tups
+
 
     def _get_stock_tweets(self, stock_symbol):
         """
         get all tweets relevant to the the given stock and generate weights of them
         :param stock_symbol: is the stock symbol
-        :return: [(date, index, [(text, weight)]]
+        :return: [(date, index, [(text, weight)])]
         """
-        # TODO: implement a clever method to get more data and compute tweets' scores
-        def _filter(tweets):
-            filtered_tweets = []
-            for tweet in tweets:
-                for value in self.lookup_table[stock_symbol]:
-                    if value.lower() in tweet.lower():
-                        filtered_tweets.append(tweet)
-            return filtered_tweets
 
-        pass
+        filtered_list = []
+        for tuple in self.twitter_list:
+            # tweet_tups = [(text, count, weight(0)),...]
+            tweet_tups = [[t_tup[0],t_tup[1],0] for t_tup in tuple[2]]
+            
+            # filter against lookup_table
+            tweet_tups = self._add_score(tweet_tups,self.lookup_table[stock_symbol],5 )
+            tweet_tups = self._add_score(tweet_tups,self.general_words, 1)
+
+            for t_tup in tweet_tups:
+                t_tup[2] = t_tup[2] * math.log(t_tup[1])
+            filtered_tweets = [(t_tup[0],t_tup[2]) for t_tup in tweet_tups if t_tup[2]>0]
+            filtered_list.append((tuple[0], tuple[1], filtered_tweets))
+        return filtered_list
+
 
     def _embedding(self, tweets_list):
         """
@@ -323,8 +383,12 @@ if __name__ == "__main__":
         '../../resources/twitter_database.db',
         '../../resources/nasdaq100_database.db',
         '../../resources/filter_table.txt',
+        '../../resources/general_words.txt',
+        None,
         '2018-04-23',
         0,
-        '2018-04-30',
+        '2018-04-25',
         391,
     )
+    sample.get_serial_text_sample('aal',30)
+
